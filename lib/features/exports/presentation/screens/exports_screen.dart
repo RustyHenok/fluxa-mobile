@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/models/fluxa_models.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
@@ -12,11 +15,63 @@ class ExportsScreen extends ConsumerStatefulWidget {
 }
 
 class _ExportsScreenState extends ConsumerState<ExportsScreen> {
+  static const _pollInterval = Duration(seconds: 2);
+
   bool _isBusy = false;
+  Timer? _pollingTimer;
   String? _error;
   FluxaJob? _job;
   FluxaJobResult? _jobResult;
-  String _statusFilter = 'open';
+  String _statusFilter = '';
+  String _priorityFilter = '';
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  String _formatDateTime(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Not available';
+    }
+
+    return DateFormat.yMMMd().add_jm().format(DateTime.parse(value).toLocal());
+  }
+
+  String _labelize(String value) {
+    return value.replaceAll('_', ' ');
+  }
+
+  List<FluxaTask> _tasksFromResult(FluxaJobResult result) {
+    final rawTasks = result.result['tasks'] as List? ?? const [];
+
+    return rawTasks
+        .map(
+          (entry) => FluxaTask.fromJson(
+            Map<String, dynamic>.from(entry as Map),
+          ),
+        )
+        .toList();
+  }
+
+  int _taskCountFromResult(FluxaJobResult result) {
+    return result.result['task_count'] as int? ?? _tasksFromResult(result).length;
+  }
+
+  void _schedulePolling() {
+    _pollingTimer?.cancel();
+
+    if (_job == null || (_job!.status != 'queued' && _job!.status != 'running')) {
+      return;
+    }
+
+    _pollingTimer = Timer(_pollInterval, () {
+      if (mounted) {
+        _refreshJob(triggeredByPolling: true);
+      }
+    });
+  }
 
   Future<void> _createExport() async {
     final auth = ref.read(authControllerProvider).state;
@@ -34,14 +89,18 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
       final job = await ref.read(fluxaApiClientProvider).createTaskExport(
             session.accessToken,
             filters: {
-              'status': _statusFilter,
+              if (_statusFilter.isNotEmpty) 'status': _statusFilter,
+              if (_priorityFilter.isNotEmpty) 'priority': _priorityFilter,
             },
-            idempotencyKey: DateTime.now().microsecondsSinceEpoch.toString(),
+            idempotencyKey:
+                'mobile-export-${DateTime.now().microsecondsSinceEpoch}',
           );
       setState(() {
         _job = job;
+        _jobResult = null;
       });
-      await _refreshJob();
+      _schedulePolling();
+      await _refreshJob(triggeredByPolling: true);
     } catch (error) {
       setState(() {
         _error = '$error';
@@ -55,7 +114,7 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
     }
   }
 
-  Future<void> _refreshJob() async {
+  Future<void> _refreshJob({bool triggeredByPolling = false}) async {
     final auth = ref.read(authControllerProvider).state;
     final session = auth.session;
     final job = _job;
@@ -63,10 +122,12 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
       return;
     }
 
-    setState(() {
-      _error = null;
-      _isBusy = true;
-    });
+    if (!triggeredByPolling) {
+      setState(() {
+        _error = null;
+        _isBusy = true;
+      });
+    }
 
     try {
       final nextJob =
@@ -77,18 +138,27 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
         jobResult = await ref
             .read(fluxaApiClientProvider)
             .getJobResult(session.accessToken, nextJob.id);
+      } else if (nextJob.status == 'dead_letter') {
+        _pollingTimer?.cancel();
       }
 
       setState(() {
         _job = nextJob;
         _jobResult = jobResult;
       });
+
+      if (nextJob.status == 'queued' || nextJob.status == 'running') {
+        _schedulePolling();
+      } else {
+        _pollingTimer?.cancel();
+      }
     } catch (error) {
       setState(() {
         _error = '$error';
       });
+      _pollingTimer?.cancel();
     } finally {
-      if (mounted) {
+      if (mounted && !triggeredByPolling) {
         setState(() {
           _isBusy = false;
         });
@@ -104,6 +174,13 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Exports'),
+        actions: [
+          if (_job != null)
+            IconButton(
+              onPressed: _isBusy ? null : () => _refreshJob(),
+              icon: const Icon(Icons.refresh),
+            ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -126,10 +203,12 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
                       labelText: 'Task status filter',
                     ),
                     value: _statusFilter,
                     items: const [
+                      DropdownMenuItem(value: '', child: Text('Any status')),
                       DropdownMenuItem(value: 'open', child: Text('Open')),
                       DropdownMenuItem(
                         value: 'in_progress',
@@ -146,6 +225,31 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
                             }
                             setState(() {
                               _statusFilter = value;
+                            });
+                          },
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: 'Task priority filter',
+                    ),
+                    value: _priorityFilter,
+                    items: const [
+                      DropdownMenuItem(value: '', child: Text('Any priority')),
+                      DropdownMenuItem(value: 'low', child: Text('Low')),
+                      DropdownMenuItem(value: 'medium', child: Text('Medium')),
+                      DropdownMenuItem(value: 'high', child: Text('High')),
+                      DropdownMenuItem(value: 'urgent', child: Text('Urgent')),
+                    ],
+                    onChanged: _isBusy
+                        ? null
+                        : (value) {
+                            if (value == null) {
+                              return;
+                            }
+                            setState(() {
+                              _priorityFilter = value;
                             });
                           },
                   ),
@@ -170,24 +274,42 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Latest export job',
-                      style: Theme.of(context).textTheme.titleLarge,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Latest export job',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                        ),
+                        Chip(
+                          label: Text(_labelize(_job!.status)),
+                          avatar: _job!.status == 'queued' || _job!.status == 'running'
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : null,
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     Text('Job ID: ${_job!.id}'),
                     Text('Type: ${_job!.jobType}'),
-                    Text('Status: ${_job!.status}'),
+                    Text('Finished: ${_formatDateTime(_job!.finishedAt)}'),
                     const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: _isBusy ? null : _refreshJob,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Refresh job status'),
-                    ),
-                    if (_jobResult != null) ...[
-                      const SizedBox(height: 12),
+                    if (_job!.status == 'queued' || _job!.status == 'running')
                       Text(
-                        'Result payload keys: ${_jobResult!.result.keys.join(', ')}',
+                        'Polling job status automatically until completion.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    if (_jobResult != null) ...[
+                      const SizedBox(height: 16),
+                      _ExportResultCard(
+                        result: _jobResult!,
+                        tasks: _tasksFromResult(_jobResult!),
+                        taskCount: _taskCountFromResult(_jobResult!),
                       ),
                     ],
                   ],
@@ -203,6 +325,79 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _ExportResultCard extends StatelessWidget {
+  const _ExportResultCard({
+    required this.result,
+    required this.taskCount,
+    required this.tasks,
+  });
+
+  final FluxaJobResult result;
+  final int taskCount;
+  final List<FluxaTask> tasks;
+
+  String _formatDateTime(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Not available';
+    }
+
+    return DateFormat.yMMMd().add_jm().format(DateTime.parse(value).toLocal());
+  }
+
+  String _labelize(String value) {
+    return value.replaceAll('_', ' ');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final requestedBy = result.result['requested_by'] as String? ?? 'Unknown';
+    final generatedAt = result.result['generated_at'] as String?;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Export result',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Generated ${_formatDateTime(generatedAt)} with $taskCount matching tasks.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            Chip(label: Text('$taskCount tasks')),
+            Chip(label: Text('Requested by $requestedBy')),
+            Chip(label: Text('Finished ${_formatDateTime(result.finishedAt)}')),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (tasks.isEmpty)
+          const Text('No tasks matched the selected filters.')
+        else
+          ...tasks.map(
+            (task) => Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: ListTile(
+                title: Text(task.title),
+                subtitle: Text('${_labelize(task.status)} · ${_labelize(task.priority)}'),
+                trailing: Text(
+                  task.dueAt == null || task.dueAt!.isEmpty
+                      ? 'No due'
+                      : _formatDateTime(task.dueAt),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
