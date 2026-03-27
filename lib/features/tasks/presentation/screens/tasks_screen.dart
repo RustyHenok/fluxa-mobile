@@ -47,6 +47,11 @@ class TasksScreen extends ConsumerWidget {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/tasks/new'),
+        icon: const Icon(Icons.add_task),
+        label: const Text('New task'),
+      ),
       body: taskListAsync.when(
         data: (taskPage) {
           return RefreshIndicator(
@@ -55,15 +60,52 @@ class TasksScreen extends ConsumerWidget {
               await ref.read(taskListProvider.future);
             },
             child: ListView.builder(
-              itemCount: taskPage.data.length + 1,
+              itemCount: taskPage.data.isEmpty ? 2 : taskPage.data.length + 1,
               padding: const EdgeInsets.all(20),
               itemBuilder: (context, index) {
                 if (index == 0) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(
-                      'Tenant-scoped work queue',
-                      style: Theme.of(context).textTheme.headlineSmall,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Tenant-scoped work queue',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Create, review, and edit tasks from the same mobile flow.',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                if (taskPage.data.isEmpty) {
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'No tasks yet',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Start with your first task and it will show up here for the active tenant.',
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            onPressed: () => context.push('/tasks/new'),
+                            icon: const Icon(Icons.add_task),
+                            label: const Text('Create first task'),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }

@@ -82,6 +82,29 @@ class FluxaApiClient {
     }
   }
 
+  Future<FluxaTask> createTask(
+    String accessToken,
+    Map<String, dynamic> payload, {
+    required String idempotencyKey,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/v1/tasks',
+        data: payload,
+        options: _authorized(
+          accessToken,
+          headers: {
+            'Idempotency-Key': idempotencyKey,
+          },
+        ),
+      );
+
+      return FluxaTask.fromJson(response.data ?? const {});
+    } catch (error) {
+      throw _toException(error);
+    }
+  }
+
   Future<void> deleteTask(String accessToken, String taskId) async {
     try {
       await _dio.delete<void>(

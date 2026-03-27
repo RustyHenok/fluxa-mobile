@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/models/fluxa_models.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import 'tasks_screen.dart';
 
 final taskDetailProvider = FutureProvider.family<TaskDetailSnapshot, String>(
@@ -47,6 +49,10 @@ class TaskDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Task detail'),
         actions: [
+          IconButton(
+            onPressed: () => context.push('/tasks/$taskId/edit'),
+            icon: const Icon(Icons.edit_outlined),
+          ),
           IconButton(
             onPressed: () => ref.invalidate(taskDetailProvider(taskId)),
             icon: const Icon(Icons.refresh),
@@ -112,6 +118,7 @@ class TaskDetailScreen extends ConsumerWidget {
                                     );
                                 ref.invalidate(taskDetailProvider(taskId));
                                 ref.invalidate(taskListProvider);
+                                ref.invalidate(overviewProvider);
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(

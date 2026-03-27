@@ -40,6 +40,7 @@ The mobile repo now includes:
 - Dio-backed API client aligned with the backend REST contract
 - signed-in overview dashboard
 - task list + task detail with audit timeline
+- task create + edit flows with assignee, priority, status, and due date controls
 - export job starter flow
 - settings screen with runtime/API context
 
@@ -61,6 +62,6 @@ flutter run --dart-define=FLUXA_API_BASE_URL=http://10.0.2.2:18080
 After the Flutter SDK is available locally, the next mobile slices are:
 
 - generated Dart client/models from the synced OpenAPI file
-- task create/edit flows
 - stronger job polling and export result rendering
+- delete/archive polish and richer task filtering
 - integration/device verification

@@ -9,6 +9,7 @@ import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/exports/presentation/screens/exports_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/tasks/presentation/screens/task_detail_screen.dart';
+import '../../features/tasks/presentation/screens/task_form_screen.dart';
 import '../../features/tasks/presentation/screens/tasks_screen.dart';
 import '../../shared/widgets/app_shell.dart';
 
@@ -76,6 +77,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const SettingsScreen(),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/tasks/new',
+        builder: (context, state) => const TaskFormScreen(),
+      ),
+      GoRoute(
+        path: '/tasks/:taskId/edit',
+        builder: (context, state) {
+          final taskId = state.pathParameters['taskId'] ?? '';
+          return TaskFormScreen(taskId: taskId);
+        },
       ),
       GoRoute(
         path: '/tasks/:taskId',
