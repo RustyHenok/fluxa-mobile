@@ -21,16 +21,46 @@ If your backend checkout lives somewhere else, override the source path:
 BACKEND_OPENAPI_PATH=/path/to/fluxa-backend/openapi/fluxa-openapi.json ./scripts/sync_openapi.sh
 ```
 
-## Planned Stack
+## Stack
 
 - `Flutter`
-- generated Dart models/client from the synced OpenAPI file
+- `flutter_riverpod`
+- `go_router`
+- `dio`
+- `flutter_secure_storage`
+- synced OpenAPI contract from `fluxa-backend`
+
+## Current Mobile Scaffold
+
+The mobile repo now includes:
+
+- app shell + route structure
+- auth bootstrap, login, register, logout, and tenant switching
+- secure refresh-token persistence
+- Dio-backed API client aligned with the backend REST contract
+- signed-in overview dashboard
+- task list + task detail with audit timeline
+- export job starter flow
+- settings screen with runtime/API context
+
+## Run Once Flutter Is Installed
+
+```bash
+flutter pub get
+flutter run --dart-define=FLUXA_API_BASE_URL=http://127.0.0.1:18080
+```
+
+For Android emulators, you will usually want:
+
+```bash
+flutter run --dart-define=FLUXA_API_BASE_URL=http://10.0.2.2:18080
+```
 
 ## Next Implementation Step
 
-After the contract is synced, scaffold the app and wire generated client usage around:
+After the Flutter SDK is available locally, the next mobile slices are:
 
-- auth and tenant switching
-- task list/detail flows
-- export job polling
-- dashboard summary
+- generated Dart client/models from the synced OpenAPI file
+- task create/edit flows
+- stronger job polling and export result rendering
+- integration/device verification
