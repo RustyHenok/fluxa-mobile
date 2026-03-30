@@ -209,25 +209,25 @@ class _TaskFormBodyState extends ConsumerState<_TaskFormBody> {
     try {
       final api = ref.read(fluxaApiClientProvider);
       final description = _descriptionController.text.trim();
-      final payload = <String, dynamic>{
-        'project_id': _projectId,
-        'title': _titleController.text.trim(),
-        'description': description.isEmpty ? null : description,
-        'status': _status,
-        'priority': _priority,
-        'assignee_id': _assigneeId,
-        'due_at': _dueAt?.toUtc().toIso8601String(),
-      };
+      final taskPayload = FluxaTaskPayload(
+        assigneeId: _assigneeId,
+        description: description.isEmpty ? null : description,
+        dueAt: _dueAt?.toUtc().toIso8601String(),
+        priority: _priority,
+        projectId: _projectId,
+        status: _status,
+        title: _titleController.text.trim(),
+      );
 
       final task = _isEditing
           ? await api.updateTask(
               session.accessToken,
               widget.snapshot.task!.id,
-              payload,
+              taskPayload.toJson(),
             )
           : await api.createTask(
               session.accessToken,
-              payload,
+              taskPayload,
               idempotencyKey:
                   'mobile-task-${DateTime.now().microsecondsSinceEpoch}',
             );

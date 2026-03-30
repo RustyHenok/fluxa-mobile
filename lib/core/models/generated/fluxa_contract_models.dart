@@ -74,6 +74,54 @@ class FluxaDashboardSummary {
   }
 }
 
+class FluxaExportRequest {
+  const FluxaExportRequest({
+    required this.assigneeId,
+    required this.dueAfter,
+    required this.dueBefore,
+    required this.priority,
+    required this.projectId,
+    required this.q,
+    required this.status,
+    required this.updatedAfter,
+  });
+
+  final String? assigneeId;
+  final String? dueAfter;
+  final String? dueBefore;
+  final String? priority;
+  final String? projectId;
+  final String? q;
+  final String? status;
+  final String? updatedAfter;
+
+  factory FluxaExportRequest.fromJson(Map<String, dynamic> json) {
+    return FluxaExportRequest(
+      assigneeId: json['assignee_id'] as String?,
+      dueAfter: json['due_after'] as String?,
+      dueBefore: json['due_before'] as String?,
+      priority: json['priority'] as String?,
+      projectId: json['project_id'] as String?,
+      q: json['q'] as String?,
+      status: json['status'] as String?,
+      updatedAfter: json['updated_after'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'assignee_id': assigneeId,
+      'due_after': dueAfter,
+      'due_before': dueBefore,
+      'priority': priority,
+      'project_id': projectId,
+      'q': q,
+      'status': status,
+      'updated_after': updatedAfter,
+    };
+  }
+}
+
 class FluxaJob {
   const FluxaJob({
     required this.attempts,
@@ -170,6 +218,54 @@ class FluxaJobResult {
   }
 }
 
+class FluxaLoginRequest {
+  const FluxaLoginRequest({
+    required this.email,
+    required this.password,
+    required this.tenantId,
+  });
+
+  final String email;
+  final String password;
+  final String? tenantId;
+
+  factory FluxaLoginRequest.fromJson(Map<String, dynamic> json) {
+    return FluxaLoginRequest(
+      email: json['email'] as String? ?? '',
+      password: json['password'] as String? ?? '',
+      tenantId: json['tenant_id'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'email': email,
+      'password': password,
+      'tenant_id': tenantId,
+    };
+  }
+}
+
+class FluxaLogoutRequest {
+  const FluxaLogoutRequest({
+    required this.refreshToken,
+  });
+
+  final String refreshToken;
+
+  factory FluxaLogoutRequest.fromJson(Map<String, dynamic> json) {
+    return FluxaLogoutRequest(
+      refreshToken: json['refresh_token'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'refresh_token': refreshToken,
+    };
+  }
+}
+
 class FluxaMe {
   const FluxaMe({
     required this.activeTenant,
@@ -190,6 +286,54 @@ class FluxaMe {
     return {
       'active_tenant': activeTenant.toJson(),
       'user': user.toJson(),
+    };
+  }
+}
+
+class FluxaProjectPatchPayload {
+  const FluxaProjectPatchPayload({
+    required this.description,
+    required this.name,
+  });
+
+  final String? description;
+  final String? name;
+
+  factory FluxaProjectPatchPayload.fromJson(Map<String, dynamic> json) {
+    return FluxaProjectPatchPayload(
+      description: json['description'] as String?,
+      name: json['name'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'description': description,
+      'name': name,
+    };
+  }
+}
+
+class FluxaProjectPayload {
+  const FluxaProjectPayload({
+    required this.description,
+    required this.name,
+  });
+
+  final String? description;
+  final String name;
+
+  factory FluxaProjectPayload.fromJson(Map<String, dynamic> json) {
+    return FluxaProjectPayload(
+      description: json['description'] as String?,
+      name: json['name'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'description': description,
+      'name': name,
     };
   }
 }
@@ -286,6 +430,78 @@ class FluxaProjectSummary {
   }
 }
 
+class FluxaRefreshRequest {
+  const FluxaRefreshRequest({
+    required this.refreshToken,
+    required this.tenantId,
+  });
+
+  final String refreshToken;
+  final String? tenantId;
+
+  factory FluxaRefreshRequest.fromJson(Map<String, dynamic> json) {
+    return FluxaRefreshRequest(
+      refreshToken: json['refresh_token'] as String? ?? '',
+      tenantId: json['tenant_id'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'refresh_token': refreshToken,
+      'tenant_id': tenantId,
+    };
+  }
+}
+
+class FluxaRegisterRequest {
+  const FluxaRegisterRequest({
+    required this.email,
+    required this.password,
+    required this.tenantName,
+  });
+
+  final String email;
+  final String password;
+  final String? tenantName;
+
+  factory FluxaRegisterRequest.fromJson(Map<String, dynamic> json) {
+    return FluxaRegisterRequest(
+      email: json['email'] as String? ?? '',
+      password: json['password'] as String? ?? '',
+      tenantName: json['tenant_name'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'email': email,
+      'password': password,
+      'tenant_name': tenantName,
+    };
+  }
+}
+
+class FluxaSwitchTenantRequest {
+  const FluxaSwitchTenantRequest({
+    required this.tenantId,
+  });
+
+  final String tenantId;
+
+  factory FluxaSwitchTenantRequest.fromJson(Map<String, dynamic> json) {
+    return FluxaSwitchTenantRequest(
+      tenantId: json['tenant_id'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'tenant_id': tenantId,
+    };
+  }
+}
+
 class FluxaTaskAuditPage {
   const FluxaTaskAuditPage({
     required this.data,
@@ -350,6 +566,50 @@ class FluxaTaskAuditEntry {
       'payload': payload,
       'task_id': taskId,
       'tenant_id': tenantId,
+    };
+  }
+}
+
+class FluxaTaskPayload {
+  const FluxaTaskPayload({
+    required this.assigneeId,
+    required this.description,
+    required this.dueAt,
+    required this.priority,
+    required this.projectId,
+    required this.status,
+    required this.title,
+  });
+
+  final String? assigneeId;
+  final String? description;
+  final String? dueAt;
+  final String? priority;
+  final String? projectId;
+  final String? status;
+  final String title;
+
+  factory FluxaTaskPayload.fromJson(Map<String, dynamic> json) {
+    return FluxaTaskPayload(
+      assigneeId: json['assignee_id'] as String?,
+      description: json['description'] as String?,
+      dueAt: json['due_at'] as String?,
+      priority: json['priority'] as String?,
+      projectId: json['project_id'] as String?,
+      status: json['status'] as String?,
+      title: json['title'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'assignee_id': assigneeId,
+      'description': description,
+      'due_at': dueAt,
+      'priority': priority,
+      'project_id': projectId,
+      'status': status,
+      'title': title,
     };
   }
 }

@@ -88,10 +88,16 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
     try {
       final job = await ref.read(fluxaApiClientProvider).createTaskExport(
             session.accessToken,
-            filters: {
-              if (_statusFilter.isNotEmpty) 'status': _statusFilter,
-              if (_priorityFilter.isNotEmpty) 'priority': _priorityFilter,
-            },
+            FluxaExportRequest(
+              assigneeId: null,
+              dueAfter: null,
+              dueBefore: null,
+              priority: _priorityFilter.isEmpty ? null : _priorityFilter,
+              projectId: null,
+              q: null,
+              status: _statusFilter.isEmpty ? null : _statusFilter,
+              updatedAfter: null,
+            ),
             idempotencyKey:
                 'mobile-export-${DateTime.now().microsecondsSinceEpoch}',
           );

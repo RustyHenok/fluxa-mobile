@@ -60,14 +60,14 @@ class FluxaApiClient {
   }
 
   Future<FluxaJob> createTaskExport(
-    String accessToken, {
-    Map<String, dynamic>? filters,
+    String accessToken,
+    FluxaExportRequest request, {
     required String idempotencyKey,
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/v1/exports/tasks',
-        data: filters ?? const {},
+        data: request.toJson(),
         options: _authorized(
           accessToken,
           headers: {
@@ -84,13 +84,13 @@ class FluxaApiClient {
 
   Future<FluxaTask> createTask(
     String accessToken,
-    Map<String, dynamic> payload, {
+    FluxaTaskPayload payload, {
     required String idempotencyKey,
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/v1/tasks',
-        data: payload,
+        data: payload.toJson(),
         options: _authorized(
           accessToken,
           headers: {
@@ -107,12 +107,12 @@ class FluxaApiClient {
 
   Future<FluxaProject> createProject(
     String accessToken,
-    Map<String, dynamic> payload,
+    FluxaProjectPayload payload,
   ) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/v1/projects',
-        data: payload,
+        data: payload.toJson(),
         options: _authorized(accessToken),
       );
 
@@ -421,18 +421,12 @@ class FluxaApiClient {
   }
 
   Future<FluxaSession> login({
-    required String email,
-    required String password,
-    String? tenantId,
+    required FluxaLoginRequest request,
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/v1/auth/login',
-        data: {
-          'email': email,
-          'password': password,
-          if (tenantId != null && tenantId.isNotEmpty) 'tenant_id': tenantId,
-        },
+        data: request.toJson(),
       );
 
       return FluxaSession.fromJson(response.data ?? const {});
@@ -441,13 +435,11 @@ class FluxaApiClient {
     }
   }
 
-  Future<void> logout(String refreshToken) async {
+  Future<void> logout(FluxaLogoutRequest request) async {
     try {
       await _dio.post<void>(
         '/v1/auth/logout',
-        data: {
-          'refresh_token': refreshToken,
-        },
+        data: request.toJson(),
       );
     } catch (error) {
       throw _toException(error);
@@ -455,16 +447,12 @@ class FluxaApiClient {
   }
 
   Future<FluxaSession> refresh({
-    required String refreshToken,
-    String? tenantId,
+    required FluxaRefreshRequest request,
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/v1/auth/refresh',
-        data: {
-          'refresh_token': refreshToken,
-          if (tenantId != null && tenantId.isNotEmpty) 'tenant_id': tenantId,
-        },
+        data: request.toJson(),
       );
 
       return FluxaSession.fromJson(response.data ?? const {});
@@ -474,18 +462,12 @@ class FluxaApiClient {
   }
 
   Future<FluxaSession> register({
-    required String email,
-    required String password,
-    required String tenantName,
+    required FluxaRegisterRequest request,
   }) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/v1/auth/register',
-        data: {
-          'email': email,
-          'password': password,
-          'tenant_name': tenantName,
-        },
+        data: request.toJson(),
       );
 
       return FluxaSession.fromJson(response.data ?? const {});
@@ -496,14 +478,12 @@ class FluxaApiClient {
 
   Future<FluxaSession> switchTenant(
     String accessToken,
-    String tenantId,
+    FluxaSwitchTenantRequest request,
   ) async {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/v1/auth/switch-tenant',
-        data: {
-          'tenant_id': tenantId,
-        },
+        data: request.toJson(),
         options: _authorized(accessToken),
       );
 
@@ -534,12 +514,12 @@ class FluxaApiClient {
   Future<FluxaProject> updateProject(
     String accessToken,
     String projectId,
-    Map<String, dynamic> payload,
+    FluxaProjectPatchPayload payload,
   ) async {
     try {
       final response = await _dio.patch<Map<String, dynamic>>(
         '/v1/projects/$projectId',
-        data: payload,
+        data: payload.toJson(),
         options: _authorized(accessToken),
       );
 

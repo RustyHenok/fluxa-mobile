@@ -104,8 +104,10 @@ class AuthController extends ChangeNotifier {
 
     try {
       final session = await _apiClient.refresh(
-        refreshToken: storedSession.refreshToken,
-        tenantId: storedSession.activeTenantId,
+        request: FluxaRefreshRequest(
+          refreshToken: storedSession.refreshToken,
+          tenantId: storedSession.activeTenantId,
+        ),
       );
       await _sessionStore.save(session);
       _state = AuthState.authenticated(session);
@@ -128,8 +130,11 @@ class AuthController extends ChangeNotifier {
 
     try {
       final session = await _apiClient.login(
-        email: email,
-        password: password,
+        request: FluxaLoginRequest(
+          email: email,
+          password: password,
+          tenantId: null,
+        ),
       );
       await _sessionStore.save(session);
       _state = AuthState.authenticated(session);
@@ -149,7 +154,9 @@ class AuthController extends ChangeNotifier {
 
     try {
       if (refreshToken != null && refreshToken.isNotEmpty) {
-        await _apiClient.logout(refreshToken);
+        await _apiClient.logout(
+          FluxaLogoutRequest(refreshToken: refreshToken),
+        );
       }
     } catch (_) {
       // Logout is best-effort for the upstream token revoke. Local session
@@ -171,9 +178,11 @@ class AuthController extends ChangeNotifier {
 
     try {
       final session = await _apiClient.register(
-        email: email,
-        password: password,
-        tenantName: tenantName,
+        request: FluxaRegisterRequest(
+          email: email,
+          password: password,
+          tenantName: tenantName,
+        ),
       );
       await _sessionStore.save(session);
       _state = AuthState.authenticated(session);
@@ -201,7 +210,7 @@ class AuthController extends ChangeNotifier {
     try {
       final nextSession = await _apiClient.switchTenant(
         session.accessToken,
-        tenantId,
+        FluxaSwitchTenantRequest(tenantId: tenantId),
       );
       await _sessionStore.save(nextSession);
       _state = AuthState.authenticated(nextSession);

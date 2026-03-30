@@ -118,20 +118,24 @@ class _ProjectFormBodyState extends ConsumerState<_ProjectFormBody> {
     try {
       final api = ref.read(fluxaApiClientProvider);
       final description = _descriptionController.text.trim();
-      final payload = <String, dynamic>{
-        'name': _nameController.text.trim(),
-        'description': description.isEmpty ? null : description,
-      };
+      final createPayload = FluxaProjectPayload(
+        description: description.isEmpty ? null : description,
+        name: _nameController.text.trim(),
+      );
+      final patchPayload = FluxaProjectPatchPayload(
+        description: createPayload.description,
+        name: createPayload.name,
+      );
 
       final project = _isEditing
           ? await api.updateProject(
               session.accessToken,
               widget.project!.id,
-              payload,
+              patchPayload,
             )
           : await api.createProject(
               session.accessToken,
-              payload,
+              createPayload,
             );
 
       ref.invalidate(projectListProvider);
