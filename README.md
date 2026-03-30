@@ -45,7 +45,7 @@ The mobile repo now includes:
 - typed task query helpers and partial-update request wrappers for the mobile client
 - signed-in overview dashboard
 - project list, detail, create, edit, and delete flows
-- task list + task detail with audit timeline
+- task list + task detail with audit timeline and richer mobile filters for search, project, status, and priority
 - project-aware task create + edit flows with assignee, priority, status, due date, and project controls
 - export job polling with readable result summaries and project-aware filters
 - settings screen with runtime/API context

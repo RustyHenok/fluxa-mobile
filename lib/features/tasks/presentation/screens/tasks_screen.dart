@@ -7,6 +7,9 @@ import '../../../../core/models/fluxa_models.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 
 final taskProjectFilterProvider = StateProvider<String?>((ref) => null);
+final taskStatusFilterProvider = StateProvider<String?>((ref) => null);
+final taskPriorityFilterProvider = StateProvider<String?>((ref) => null);
+final taskSearchFilterProvider = StateProvider<String>((ref) => '');
 
 final taskListProvider = FutureProvider<TaskListSnapshot>((ref) async {
   final auth = ref.watch(authControllerProvider).state;
@@ -17,11 +20,17 @@ final taskListProvider = FutureProvider<TaskListSnapshot>((ref) async {
 
   final api = ref.watch(fluxaApiClientProvider);
   final projectId = ref.watch(taskProjectFilterProvider);
+  final status = ref.watch(taskStatusFilterProvider);
+  final priority = ref.watch(taskPriorityFilterProvider);
+  final searchQuery = ref.watch(taskSearchFilterProvider).trim();
   final tasksFuture = api.listTasks(
     session.accessToken,
     query: FluxaTaskListQuery(
       limit: 12,
+      priority: priority,
       projectId: projectId,
+      q: searchQuery.isEmpty ? null : searchQuery,
+      status: status,
     ),
   );
   final projectsFuture = api.listProjects(session.accessToken);
@@ -42,8 +51,47 @@ class TaskListSnapshot {
   final FluxaTaskPage tasks;
 }
 
-class TasksScreen extends ConsumerWidget {
+class TasksScreen extends ConsumerStatefulWidget {
   const TasksScreen({super.key});
+
+  @override
+  ConsumerState<TasksScreen> createState() => _TasksScreenState();
+}
+
+class _TasksScreenState extends ConsumerState<TasksScreen> {
+  static const _statusOptions = [
+    'open',
+    'in_progress',
+    'done',
+    'archived',
+  ];
+
+  static const _priorityOptions = [
+    'low',
+    'medium',
+    'high',
+    'urgent',
+  ];
+
+  late final TextEditingController _searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController(
+      text: ref.read(taskSearchFilterProvider),
+    )..addListener(() {
+        if (mounted) {
+          setState(() {});
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   String _formatDate(String? value) {
     if (value == null || value.isEmpty) {
@@ -53,10 +101,41 @@ class TasksScreen extends ConsumerWidget {
     return DateFormat.yMMMd().add_jm().format(DateTime.parse(value).toLocal());
   }
 
+  String _formatLabel(String value) {
+    return value
+        .split('_')
+        .map(
+          (segment) => segment.isEmpty
+              ? segment
+              : '${segment[0].toUpperCase()}${segment.substring(1)}',
+        )
+        .join(' ');
+  }
+
+  void _applySearchFilter() {
+    ref.read(taskSearchFilterProvider.notifier).state =
+        _searchController.text.trim();
+  }
+
+  void _clearFilters() {
+    _searchController.clear();
+    ref.read(taskProjectFilterProvider.notifier).state = null;
+    ref.read(taskStatusFilterProvider.notifier).state = null;
+    ref.read(taskPriorityFilterProvider.notifier).state = null;
+    ref.read(taskSearchFilterProvider.notifier).state = '';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final taskListAsync = ref.watch(taskListProvider);
     final selectedProjectId = ref.watch(taskProjectFilterProvider);
+    final selectedStatus = ref.watch(taskStatusFilterProvider);
+    final selectedPriority = ref.watch(taskPriorityFilterProvider);
+    final searchQuery = ref.watch(taskSearchFilterProvider);
+    final hasActiveFilters = selectedProjectId != null ||
+        selectedStatus != null ||
+        selectedPriority != null ||
+        searchQuery.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
@@ -102,100 +181,225 @@ class TasksScreen extends ConsumerWidget {
             return null;
           }
 
+          final activeFilterChips = [
+            if (searchQuery.isNotEmpty) 'Search: "$searchQuery"',
+            if (effectiveSelectedProjectId != null)
+              'Project: ${projectNameFor(effectiveSelectedProjectId) ?? effectiveSelectedProjectId}',
+            if (selectedStatus != null) 'Status: ${_formatLabel(selectedStatus)}',
+            if (selectedPriority != null)
+              'Priority: ${_formatLabel(selectedPriority)}',
+          ];
+
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(taskListProvider);
               await ref.read(taskListProvider.future);
             },
-            child: ListView.builder(
-              itemCount: taskPage.data.isEmpty ? 2 : taskPage.data.length + 1,
+            child: ListView(
               padding: const EdgeInsets.all(20),
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Tenant-scoped work queue',
-                          style: Theme.of(context).textTheme.headlineSmall,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Tenant-scoped work queue',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Search, filter, and edit tasks from the same mobile flow.',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _searchController,
+                        textInputAction: TextInputAction.search,
+                        decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          labelText: 'Search title or description',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: searchQuery.isEmpty &&
+                                  _searchController.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    _applySearchFilter();
+                                  },
+                                  icon: const Icon(Icons.close),
+                                ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Create, review, and edit tasks from the same mobile flow.',
-                          style: Theme.of(context).textTheme.bodyMedium,
+                        onSubmitted: (_) => _applySearchFilter(),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _applySearchFilter,
+                          icon: const Icon(Icons.filter_alt_outlined),
+                          label: const Text('Apply search'),
                         ),
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String?>(
-                          value: effectiveSelectedProjectId,
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: 'Project filter',
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String?>(
+                        value: effectiveSelectedProjectId,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Project filter',
+                        ),
+                        items: [
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('All projects'),
                           ),
-                          items: [
-                            const DropdownMenuItem<String?>(
-                              value: null,
-                              child: Text('All projects'),
+                          ...projects.map(
+                            (project) => DropdownMenuItem<String?>(
+                              value: project.id,
+                              child: Text(project.name),
                             ),
-                            ...projects.map(
-                              (project) => DropdownMenuItem<String?>(
-                                value: project.id,
-                                child: Text(project.name),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          ref.read(taskProjectFilterProvider.notifier).state = value;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String?>(
+                              value: selectedStatus,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: 'Status',
                               ),
+                              items: [
+                                const DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text('All statuses'),
+                                ),
+                                ..._statusOptions.map(
+                                  (status) => DropdownMenuItem<String?>(
+                                    value: status,
+                                    child: Text(_formatLabel(status)),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                ref.read(taskStatusFilterProvider.notifier).state =
+                                    value;
+                              },
                             ),
-                          ],
-                          onChanged: (value) {
-                            ref.read(taskProjectFilterProvider.notifier).state =
-                                value;
-                          },
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<String?>(
+                              value: selectedPriority,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: 'Priority',
+                              ),
+                              items: [
+                                const DropdownMenuItem<String?>(
+                                  value: null,
+                                  child: Text('All priorities'),
+                                ),
+                                ..._priorityOptions.map(
+                                  (priority) => DropdownMenuItem<String?>(
+                                    value: priority,
+                                    child: Text(_formatLabel(priority)),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                ref.read(taskPriorityFilterProvider.notifier).state =
+                                    value;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${taskPage.data.length} task${taskPage.data.length == 1 ? '' : 's'} loaded${taskPage.nextCursor != null ? ' · more available' : ''}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                          if (hasActiveFilters)
+                            TextButton.icon(
+                              onPressed: _clearFilters,
+                              icon: const Icon(Icons.restart_alt),
+                              label: const Text('Reset filters'),
+                            ),
+                        ],
+                      ),
+                      if (activeFilterChips.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: activeFilterChips
+                              .map((label) => Chip(label: Text(label)))
+                              .toList(),
                         ),
                       ],
-                    ),
-                  );
-                }
-
-                if (taskPage.data.isEmpty) {
-                  return Card(
+                    ],
+                  ),
+                ),
+                if (taskPage.data.isEmpty)
+                  Card(
                     child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'No tasks yet',
+                            hasActiveFilters ? 'No tasks match these filters' : 'No tasks yet',
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
                           const SizedBox(height: 8),
-                          const Text(
-                            'Start with your first task and it will show up here for the active tenant.',
+                          Text(
+                            hasActiveFilters
+                                ? 'Try clearing one or more filters to broaden the result set.'
+                                : 'Start with your first task and it will show up here for the active tenant.',
                           ),
                           const SizedBox(height: 16),
-                          FilledButton.icon(
-                            onPressed: () => context.push('/tasks/new'),
-                            icon: const Icon(Icons.add_task),
-                            label: const Text('Create first task'),
-                          ),
+                          if (hasActiveFilters)
+                            OutlinedButton.icon(
+                              onPressed: _clearFilters,
+                              icon: const Icon(Icons.restart_alt),
+                              label: const Text('Clear filters'),
+                            )
+                          else
+                            FilledButton.icon(
+                              onPressed: () => context.push('/tasks/new'),
+                              icon: const Icon(Icons.add_task),
+                              label: const Text('Create first task'),
+                            ),
                         ],
                       ),
                     ),
-                  );
-                }
-
-                final task = taskPage.data[index - 1];
-                final projectName = projectNameFor(task.projectId);
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: ListTile(
-                    title: Text(task.title),
-                    subtitle: Text(
-                      '${projectName ?? 'No project'} · ${task.status} · ${task.priority} · ${_formatDate(task.dueAt)}',
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/tasks/${task.id}'),
                   ),
-                );
-              },
+                ...taskPage.data.map((task) {
+                  final projectName = projectNameFor(task.projectId);
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: ListTile(
+                      title: Text(task.title),
+                      subtitle: Text(
+                        '${projectName ?? 'No project'} · ${_formatLabel(task.status)} · ${_formatLabel(task.priority)} · ${_formatDate(task.dueAt)}',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push('/tasks/${task.id}'),
+                    ),
+                  );
+                }),
+              ],
             ),
           );
         },
