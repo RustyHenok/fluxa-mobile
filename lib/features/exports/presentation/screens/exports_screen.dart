@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/models/fluxa_models.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../projects/presentation/screens/projects_screen.dart';
 
 class ExportsScreen extends ConsumerStatefulWidget {
   const ExportsScreen({super.key});
@@ -22,6 +23,7 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
   String? _error;
   FluxaJob? _job;
   FluxaJobResult? _jobResult;
+  String? _projectFilterId;
   String _statusFilter = '';
   String _priorityFilter = '';
 
@@ -59,6 +61,20 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
     return result.result['task_count'] as int? ?? _tasksFromResult(result).length;
   }
 
+  String? _projectNameFor(List<FluxaProject> projects, String? projectId) {
+    if (projectId == null || projectId.isEmpty) {
+      return null;
+    }
+
+    for (final project in projects) {
+      if (project.id == projectId) {
+        return project.name;
+      }
+    }
+
+    return null;
+  }
+
   void _schedulePolling() {
     _pollingTimer?.cancel();
 
@@ -93,7 +109,7 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
               dueAfter: null,
               dueBefore: null,
               priority: _priorityFilter.isEmpty ? null : _priorityFilter,
-              projectId: null,
+              projectId: _projectFilterId,
               q: null,
               status: _statusFilter.isEmpty ? null : _statusFilter,
               updatedAfter: null,
@@ -175,12 +191,17 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider).state;
+    final projectsAsync = ref.watch(projectListProvider);
     final session = auth.session;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Exports'),
         actions: [
+          IconButton(
+            onPressed: () => ref.invalidate(projectListProvider),
+            icon: const Icon(Icons.folder_open_outlined),
+          ),
           if (_job != null)
             IconButton(
               onPressed: _isBusy ? null : () => _refreshJob(),
@@ -188,148 +209,231 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
             ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Task export builder',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Create a background export job against the active tenant.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Task status filter',
-                    ),
-                    value: _statusFilter,
-                    items: const [
-                      DropdownMenuItem(value: '', child: Text('Any status')),
-                      DropdownMenuItem(value: 'open', child: Text('Open')),
-                      DropdownMenuItem(
-                        value: 'in_progress',
-                        child: Text('In progress'),
-                      ),
-                      DropdownMenuItem(value: 'done', child: Text('Done')),
-                      DropdownMenuItem(value: 'archived', child: Text('Archived')),
-                    ],
-                    onChanged: _isBusy
-                        ? null
-                        : (value) {
-                            if (value == null) {
-                              return;
-                            }
-                            setState(() {
-                              _statusFilter = value;
-                            });
-                          },
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Task priority filter',
-                    ),
-                    value: _priorityFilter,
-                    items: const [
-                      DropdownMenuItem(value: '', child: Text('Any priority')),
-                      DropdownMenuItem(value: 'low', child: Text('Low')),
-                      DropdownMenuItem(value: 'medium', child: Text('Medium')),
-                      DropdownMenuItem(value: 'high', child: Text('High')),
-                      DropdownMenuItem(value: 'urgent', child: Text('Urgent')),
-                    ],
-                    onChanged: _isBusy
-                        ? null
-                        : (value) {
-                            if (value == null) {
-                              return;
-                            }
-                            setState(() {
-                              _priorityFilter = value;
-                            });
-                          },
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _isBusy || session == null ? null : _createExport,
-                      icon: const Icon(Icons.download_outlined),
-                      label: Text(_isBusy ? 'Working...' : 'Create export'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (_job != null)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Latest export job',
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                        ),
-                        Chip(
-                          label: Text(_labelize(_job!.status)),
-                          avatar: _job!.status == 'queued' || _job!.status == 'running'
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : null,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text('Job ID: ${_job!.id}'),
-                    Text('Type: ${_job!.jobType}'),
-                    Text('Finished: ${_formatDateTime(_job!.finishedAt)}'),
-                    const SizedBox(height: 12),
-                    if (_job!.status == 'queued' || _job!.status == 'running')
+      body: projectsAsync.when(
+        data: (projects) {
+          final hasSelectedProject = _projectFilterId != null &&
+              projects.any((project) => project.id == _projectFilterId);
+          final selectedProjectId =
+              hasSelectedProject ? _projectFilterId : null;
+          final selectedProjectName =
+              _projectNameFor(projects, selectedProjectId);
+
+          if (_projectFilterId != null && !hasSelectedProject) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) {
+                return;
+              }
+
+              setState(() {
+                _projectFilterId = null;
+              });
+            });
+          }
+
+          return ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        'Polling job status automatically until completion.',
+                        'Task export builder',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Create a background export job against the active tenant.',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
-                    if (_jobResult != null) ...[
                       const SizedBox(height: 16),
-                      _ExportResultCard(
-                        result: _jobResult!,
-                        tasks: _tasksFromResult(_jobResult!),
-                        taskCount: _taskCountFromResult(_jobResult!),
+                      DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Task status filter',
+                        ),
+                        value: _statusFilter,
+                        items: const [
+                          DropdownMenuItem(value: '', child: Text('Any status')),
+                          DropdownMenuItem(value: 'open', child: Text('Open')),
+                          DropdownMenuItem(
+                            value: 'in_progress',
+                            child: Text('In progress'),
+                          ),
+                          DropdownMenuItem(value: 'done', child: Text('Done')),
+                          DropdownMenuItem(value: 'archived', child: Text('Archived')),
+                        ],
+                        onChanged: _isBusy
+                            ? null
+                            : (value) {
+                                if (value == null) {
+                                  return;
+                                }
+                                setState(() {
+                                  _statusFilter = value;
+                                });
+                              },
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Task priority filter',
+                        ),
+                        value: _priorityFilter,
+                        items: const [
+                          DropdownMenuItem(value: '', child: Text('Any priority')),
+                          DropdownMenuItem(value: 'low', child: Text('Low')),
+                          DropdownMenuItem(value: 'medium', child: Text('Medium')),
+                          DropdownMenuItem(value: 'high', child: Text('High')),
+                          DropdownMenuItem(value: 'urgent', child: Text('Urgent')),
+                        ],
+                        onChanged: _isBusy
+                            ? null
+                            : (value) {
+                                if (value == null) {
+                                  return;
+                                }
+                                setState(() {
+                                  _priorityFilter = value;
+                                });
+                              },
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String?>(
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Project filter',
+                        ),
+                        value: selectedProjectId,
+                        items: [
+                          const DropdownMenuItem<String?>(
+                            value: null,
+                            child: Text('All projects'),
+                          ),
+                          ...projects.map(
+                            (project) => DropdownMenuItem<String?>(
+                              value: project.id,
+                              child: Text(project.name),
+                            ),
+                          ),
+                        ],
+                        onChanged: _isBusy
+                            ? null
+                            : (value) {
+                                setState(() {
+                                  _projectFilterId = value;
+                                });
+                              },
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _isBusy || session == null ? null : _createExport,
+                          icon: const Icon(Icons.download_outlined),
+                          label: Text(_isBusy ? 'Working...' : 'Create export'),
+                        ),
                       ),
                     ],
-                  ],
+                  ),
                 ),
               ),
+              const SizedBox(height: 16),
+              if (_job != null)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Latest export job',
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                            ),
+                            Chip(
+                              label: Text(_labelize(_job!.status)),
+                              avatar: _job!.status == 'queued' ||
+                                      _job!.status == 'running'
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text('Job ID: ${_job!.id}'),
+                        Text('Type: ${_job!.jobType}'),
+                        Text('Finished: ${_formatDateTime(_job!.finishedAt)}'),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            if (_statusFilter.isNotEmpty)
+                              Chip(label: Text('Status ${_labelize(_statusFilter)}')),
+                            if (_priorityFilter.isNotEmpty)
+                              Chip(
+                                label: Text(
+                                  'Priority ${_labelize(_priorityFilter)}',
+                                ),
+                              ),
+                            if (selectedProjectName != null)
+                              Chip(label: Text('Project $selectedProjectName')),
+                          ],
+                        ),
+                        if (_job!.status == 'queued' || _job!.status == 'running')
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Text(
+                              'Polling job status automatically until completion.',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                        if (_jobResult != null) ...[
+                          const SizedBox(height: 16),
+                          _ExportResultCard(
+                            projects: projects,
+                            result: _jobResult!,
+                            tasks: _tasksFromResult(_jobResult!),
+                            taskCount: _taskCountFromResult(_jobResult!),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              if (_error != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+            ],
+          );
+        },
+        error: (error, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Unable to load export filters right now.\n\n$error',
+              textAlign: TextAlign.center,
             ),
-          if (_error != null) ...[
-            const SizedBox(height: 16),
-            Text(
-              _error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ],
-        ],
+          ),
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
       ),
     );
   }
@@ -337,11 +441,13 @@ class _ExportsScreenState extends ConsumerState<ExportsScreen> {
 
 class _ExportResultCard extends StatelessWidget {
   const _ExportResultCard({
+    required this.projects,
     required this.result,
     required this.taskCount,
     required this.tasks,
   });
 
+  final List<FluxaProject> projects;
   final FluxaJobResult result;
   final int taskCount;
   final List<FluxaTask> tasks;
@@ -356,6 +462,20 @@ class _ExportResultCard extends StatelessWidget {
 
   String _labelize(String value) {
     return value.replaceAll('_', ' ');
+  }
+
+  String? _projectNameFor(String? projectId) {
+    if (projectId == null || projectId.isEmpty) {
+      return null;
+    }
+
+    for (final project in projects) {
+      if (project.id == projectId) {
+        return project.name;
+      }
+    }
+
+    return null;
   }
 
   @override
@@ -390,18 +510,23 @@ class _ExportResultCard extends StatelessWidget {
           const Text('No tasks matched the selected filters.')
         else
           ...tasks.map(
-            (task) => Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: ListTile(
-                title: Text(task.title),
-                subtitle: Text('${_labelize(task.status)} · ${_labelize(task.priority)}'),
-                trailing: Text(
-                  task.dueAt == null || task.dueAt!.isEmpty
-                      ? 'No due'
-                      : _formatDateTime(task.dueAt),
+            (task) {
+              final projectName = _projectNameFor(task.projectId);
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  title: Text(task.title),
+                  subtitle: Text(
+                    '${projectName ?? 'No project'} · ${_labelize(task.status)} · ${_labelize(task.priority)}',
+                  ),
+                  trailing: Text(
+                    task.dueAt == null || task.dueAt!.isEmpty
+                        ? 'No due'
+                        : _formatDateTime(task.dueAt),
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
       ],
     );

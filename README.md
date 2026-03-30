@@ -46,7 +46,7 @@ The mobile repo now includes:
 - project list, detail, create, edit, and delete flows
 - task list + task detail with audit timeline
 - project-aware task create + edit flows with assignee, priority, status, due date, and project controls
-- export job polling with readable result summaries
+- export job polling with readable result summaries and project-aware filters
 - settings screen with runtime/API context
 
 ## Run Once Flutter Is Installed
@@ -67,5 +67,4 @@ flutter run --dart-define=FLUXA_API_BASE_URL=http://10.0.2.2:18080
 After the Flutter SDK is available locally, the next mobile slices are:
 
 - contract-drive the remaining partial-update paths and query helpers
-- export filters that include project scope
 - device verification and UX polish
