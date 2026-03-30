@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/models/fluxa_models.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
+import '../../../projects/presentation/screens/project_detail_screen.dart';
+import '../../../projects/presentation/screens/projects_screen.dart';
 import 'tasks_screen.dart';
 
 final taskDetailProvider = FutureProvider.family<TaskDetailSnapshot, String>(
@@ -63,9 +65,16 @@ class TaskDetailScreen extends ConsumerWidget {
         data: (snapshot) {
           final task = snapshot.task;
           FluxaTenantMember? assignee;
+          FluxaProject? project;
           for (final member in snapshot.members) {
             if (member.userId == task.assigneeId) {
               assignee = member;
+              break;
+            }
+          }
+          for (final entry in snapshot.projects) {
+            if (entry.id == task.projectId) {
+              project = entry;
               break;
             }
           }
@@ -98,6 +107,11 @@ class TaskDetailScreen extends ConsumerWidget {
                               assignee?.email ?? 'Unassigned',
                             ),
                           ),
+                          if (project != null)
+                            ActionChip(
+                              label: Text(project.name),
+                              onPressed: () => context.push('/projects/${project.id}'),
+                            ),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -119,6 +133,13 @@ class TaskDetailScreen extends ConsumerWidget {
                                 ref.invalidate(taskDetailProvider(taskId));
                                 ref.invalidate(taskListProvider);
                                 ref.invalidate(overviewProvider);
+                                ref.invalidate(projectListProvider);
+                                if (task.projectId != null &&
+                                    task.projectId!.isNotEmpty) {
+                                  ref.invalidate(
+                                    projectDetailProvider(task.projectId!),
+                                  );
+                                }
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
@@ -134,6 +155,14 @@ class TaskDetailScreen extends ConsumerWidget {
                               : 'Archive task',
                         ),
                       ),
+                      if (project != null) ...[
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: () => context.push('/projects/${project.id}'),
+                          icon: const Icon(Icons.folder_open_outlined),
+                          label: const Text('Open project'),
+                        ),
+                      ],
                     ],
                   ),
                 ),

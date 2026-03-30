@@ -111,6 +111,41 @@ class DashboardScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
+                          'Project lanes',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Recent project containers for this tenant.',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 16),
+                        if (overview.projects.isEmpty)
+                          const Text('No projects yet for this tenant.'),
+                        for (final project in overview.projects.take(3))
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(project.name),
+                            subtitle: Text(
+                              project.description?.isNotEmpty == true
+                                  ? project.description!
+                                  : 'No description yet.',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => context.push('/projects/${project.id}'),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
                           'Recent task pulse',
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
@@ -137,17 +172,28 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                Row(
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
                   children: [
-                    Expanded(
+                    SizedBox(
+                      width: 160,
                       child: FilledButton.icon(
                         onPressed: () => context.go('/tasks'),
                         icon: const Icon(Icons.task_alt_outlined),
                         label: const Text('Open tasks'),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
+                    SizedBox(
+                      width: 160,
+                      child: OutlinedButton.icon(
+                        onPressed: () => context.go('/projects'),
+                        icon: const Icon(Icons.folder_open_outlined),
+                        label: const Text('Projects'),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 160,
                       child: OutlinedButton.icon(
                         onPressed: () => context.go('/exports'),
                         icon: const Icon(Icons.download_outlined),

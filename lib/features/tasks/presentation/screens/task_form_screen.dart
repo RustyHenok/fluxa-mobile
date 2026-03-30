@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/models/fluxa_models.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
+import '../../../projects/presentation/screens/project_detail_screen.dart';
+import '../../../projects/presentation/screens/projects_screen.dart';
 import 'task_detail_screen.dart';
 import 'tasks_screen.dart';
 
@@ -20,13 +22,15 @@ final taskFormSnapshotProvider =
   final api = ref.watch(fluxaApiClientProvider);
 
   if (taskId == null || taskId.isEmpty) {
-    final members = await api.listTenantMembers(
+    final membersFuture = api.listTenantMembers(
       session.accessToken,
       session.activeTenant.tenantId,
     );
+    final projectsFuture = api.listProjects(session.accessToken);
 
     return TaskFormSnapshot(
-      members: members,
+      members: await membersFuture,
+      projects: await projectsFuture,
       task: null,
     );
   }
@@ -34,6 +38,7 @@ final taskFormSnapshotProvider =
   final snapshot = await api.loadTaskDetail(session.accessToken, taskId);
   return TaskFormSnapshot(
     members: snapshot.members,
+    projects: snapshot.projects,
     task: snapshot.task,
   );
 });
@@ -41,19 +46,23 @@ final taskFormSnapshotProvider =
 class TaskFormSnapshot {
   const TaskFormSnapshot({
     required this.members,
+    required this.projects,
     required this.task,
   });
 
   final List<FluxaTenantMember> members;
+  final List<FluxaProject> projects;
   final FluxaTask? task;
 }
 
 class TaskFormScreen extends ConsumerWidget {
   const TaskFormScreen({
+    this.initialProjectId,
     this.taskId,
     super.key,
   });
 
+  final String? initialProjectId;
   final String? taskId;
 
   @override
@@ -66,7 +75,10 @@ class TaskFormScreen extends ConsumerWidget {
         title: Text(isEditing ? 'Edit task' : 'Create task'),
       ),
       body: snapshotAsync.when(
-        data: (snapshot) => _TaskFormBody(snapshot: snapshot),
+        data: (snapshot) => _TaskFormBody(
+          initialProjectId: initialProjectId,
+          snapshot: snapshot,
+        ),
         error: (error, _) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -84,9 +96,11 @@ class TaskFormScreen extends ConsumerWidget {
 
 class _TaskFormBody extends ConsumerStatefulWidget {
   const _TaskFormBody({
+    required this.initialProjectId,
     required this.snapshot,
   });
 
+  final String? initialProjectId;
   final TaskFormSnapshot snapshot;
 
   @override
@@ -116,6 +130,7 @@ class _TaskFormBodyState extends ConsumerState<_TaskFormBody> {
   String? _assigneeId;
   DateTime? _dueAt;
   late String _priority;
+  String? _projectId;
   late String _status;
 
   bool get _isEditing => widget.snapshot.task != null;
@@ -132,6 +147,7 @@ class _TaskFormBodyState extends ConsumerState<_TaskFormBody> {
     _status = task?.status ?? 'open';
     _priority = task?.priority ?? 'medium';
     _assigneeId = task?.assigneeId;
+    _projectId = task?.projectId ?? widget.initialProjectId;
     final dueAt = task?.dueAt;
     _dueAt = dueAt == null || dueAt.isEmpty ? null : DateTime.parse(dueAt).toLocal();
   }
@@ -194,6 +210,7 @@ class _TaskFormBodyState extends ConsumerState<_TaskFormBody> {
       final api = ref.read(fluxaApiClientProvider);
       final description = _descriptionController.text.trim();
       final payload = <String, dynamic>{
+        'project_id': _projectId,
         'title': _titleController.text.trim(),
         'description': description.isEmpty ? null : description,
         'status': _status,
@@ -217,8 +234,12 @@ class _TaskFormBodyState extends ConsumerState<_TaskFormBody> {
 
       ref.invalidate(taskListProvider);
       ref.invalidate(overviewProvider);
+      ref.invalidate(projectListProvider);
       ref.invalidate(taskFormSnapshotProvider(widget.snapshot.task?.id));
       ref.invalidate(taskDetailProvider(task.id));
+      if (task.projectId != null && task.projectId!.isNotEmpty) {
+        ref.invalidate(projectDetailProvider(task.projectId!));
+      }
 
       if (!mounted) {
         return;
@@ -254,6 +275,22 @@ class _TaskFormBodyState extends ConsumerState<_TaskFormBody> {
   @override
   Widget build(BuildContext context) {
     final members = widget.snapshot.members;
+    final projects = widget.snapshot.projects;
+    final hasSelectedProject = _projectId != null &&
+        projects.any((project) => project.id == _projectId);
+    final selectedProjectId = hasSelectedProject ? _projectId : null;
+
+    if (_projectId != null && !hasSelectedProject) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+
+        setState(() {
+          _projectId = null;
+        });
+      });
+    }
 
     return SafeArea(
       child: Form(
@@ -273,6 +310,33 @@ class _TaskFormBodyState extends ConsumerState<_TaskFormBody> {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 24),
+            DropdownButtonFormField<String?>(
+              value: selectedProjectId,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Project',
+              ),
+              items: [
+                const DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text('No project'),
+                ),
+                ...projects.map(
+                  (project) => DropdownMenuItem<String?>(
+                    value: project.id,
+                    child: Text(project.name),
+                  ),
+                ),
+              ],
+              onChanged: _isSubmitting
+                  ? null
+                  : (value) {
+                      setState(() {
+                        _projectId = value;
+                      });
+                    },
+            ),
+            const SizedBox(height: 16),
             TextFormField(
               controller: _titleController,
               enabled: !_isSubmitting,

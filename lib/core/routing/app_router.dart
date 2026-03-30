@@ -7,6 +7,9 @@ import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/exports/presentation/screens/exports_screen.dart';
+import '../../features/projects/presentation/screens/project_detail_screen.dart';
+import '../../features/projects/presentation/screens/project_form_screen.dart';
+import '../../features/projects/presentation/screens/projects_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/tasks/presentation/screens/task_detail_screen.dart';
 import '../../features/tasks/presentation/screens/task_form_screen.dart';
@@ -69,6 +72,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const TasksScreen(),
           ),
           GoRoute(
+            path: '/projects',
+            builder: (context, state) => const ProjectsScreen(),
+          ),
+          GoRoute(
             path: '/exports',
             builder: (context, state) => const ExportsScreen(),
           ),
@@ -80,13 +87,29 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/tasks/new',
-        builder: (context, state) => const TaskFormScreen(),
+        builder: (context, state) => TaskFormScreen(
+          initialProjectId: state.uri.queryParameters['projectId'],
+        ),
+      ),
+      GoRoute(
+        path: '/projects/new',
+        builder: (context, state) => const ProjectFormScreen(),
       ),
       GoRoute(
         path: '/tasks/:taskId/edit',
         builder: (context, state) {
           final taskId = state.pathParameters['taskId'] ?? '';
-          return TaskFormScreen(taskId: taskId);
+          return TaskFormScreen(
+            initialProjectId: state.uri.queryParameters['projectId'],
+            taskId: taskId,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/projects/:projectId/edit',
+        builder: (context, state) {
+          final projectId = state.pathParameters['projectId'] ?? '';
+          return ProjectFormScreen(projectId: projectId);
         },
       ),
       GoRoute(
@@ -94,6 +117,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final taskId = state.pathParameters['taskId'] ?? '';
           return TaskDetailScreen(taskId: taskId);
+        },
+      ),
+      GoRoute(
+        path: '/projects/:projectId',
+        builder: (context, state) {
+          final projectId = state.pathParameters['projectId'] ?? '';
+          return ProjectDetailScreen(projectId: projectId);
         },
       ),
     ],

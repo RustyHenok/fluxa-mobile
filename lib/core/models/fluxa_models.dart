@@ -151,6 +151,73 @@ class FluxaDashboardSummary {
   }
 }
 
+class FluxaProject {
+  const FluxaProject({
+    required this.createdAt,
+    required this.createdBy,
+    required this.description,
+    required this.id,
+    required this.name,
+    required this.tenantId,
+    required this.updatedAt,
+    required this.updatedBy,
+  });
+
+  final String createdAt;
+  final String createdBy;
+  final String? description;
+  final String id;
+  final String name;
+  final String tenantId;
+  final String updatedAt;
+  final String updatedBy;
+
+  factory FluxaProject.fromJson(Map<String, dynamic> json) {
+    return FluxaProject(
+      createdAt: json['created_at'] as String? ?? '',
+      createdBy: json['created_by'] as String? ?? '',
+      description: json['description'] as String?,
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      tenantId: json['tenant_id'] as String? ?? '',
+      updatedAt: json['updated_at'] as String? ?? '',
+      updatedBy: json['updated_by'] as String? ?? '',
+    );
+  }
+}
+
+class FluxaProjectSummary {
+  const FluxaProjectSummary({
+    required this.doneTaskCount,
+    required this.inProgressTaskCount,
+    required this.openTaskCount,
+    required this.overdueTaskCount,
+    required this.projectId,
+    required this.projectName,
+    required this.recentActivityCount,
+  });
+
+  final int doneTaskCount;
+  final int inProgressTaskCount;
+  final int openTaskCount;
+  final int overdueTaskCount;
+  final String projectId;
+  final String projectName;
+  final int recentActivityCount;
+
+  factory FluxaProjectSummary.fromJson(Map<String, dynamic> json) {
+    return FluxaProjectSummary(
+      doneTaskCount: json['done_task_count'] as int? ?? 0,
+      inProgressTaskCount: json['in_progress_task_count'] as int? ?? 0,
+      openTaskCount: json['open_task_count'] as int? ?? 0,
+      overdueTaskCount: json['overdue_task_count'] as int? ?? 0,
+      projectId: json['project_id'] as String? ?? '',
+      projectName: json['project_name'] as String? ?? '',
+      recentActivityCount: json['recent_activity_count'] as int? ?? 0,
+    );
+  }
+}
+
 class FluxaTask {
   const FluxaTask({
     required this.assigneeId,
@@ -160,6 +227,7 @@ class FluxaTask {
     required this.dueAt,
     required this.id,
     required this.priority,
+    required this.projectId,
     required this.status,
     required this.tenantId,
     required this.title,
@@ -174,6 +242,7 @@ class FluxaTask {
   final String? dueAt;
   final String id;
   final String priority;
+  final String? projectId;
   final String status;
   final String tenantId;
   final String title;
@@ -189,6 +258,7 @@ class FluxaTask {
       dueAt: json['due_at'] as String?,
       id: json['id'] as String? ?? '',
       priority: json['priority'] as String? ?? 'medium',
+      projectId: json['project_id'] as String?,
       status: json['status'] as String? ?? 'open',
       tenantId: json['tenant_id'] as String? ?? '',
       title: json['title'] as String? ?? '',
@@ -324,6 +394,7 @@ class OverviewSnapshot {
   const OverviewSnapshot({
     required this.me,
     required this.members,
+    required this.projects,
     required this.summary,
     required this.tasks,
     required this.tenants,
@@ -331,6 +402,7 @@ class OverviewSnapshot {
 
   final FluxaMe me;
   final List<FluxaTenantMember> members;
+  final List<FluxaProject> projects;
   final FluxaDashboardSummary summary;
   final FluxaTaskPage tasks;
   final List<FluxaTenantMembership> tenants;
@@ -340,10 +412,24 @@ class TaskDetailSnapshot {
   const TaskDetailSnapshot({
     required this.audit,
     required this.members,
+    required this.projects,
     required this.task,
   });
 
   final FluxaTaskAuditPage audit;
   final List<FluxaTenantMember> members;
+  final List<FluxaProject> projects;
   final FluxaTask task;
+}
+
+class ProjectDetailSnapshot {
+  const ProjectDetailSnapshot({
+    required this.project,
+    required this.summary,
+    required this.tasks,
+  });
+
+  final FluxaProject project;
+  final FluxaProjectSummary summary;
+  final FluxaTaskPage tasks;
 }

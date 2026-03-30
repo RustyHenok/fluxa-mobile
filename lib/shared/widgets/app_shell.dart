@@ -12,14 +12,17 @@ class AppShell extends StatelessWidget {
   final String currentLocation;
 
   int _indexForLocation() {
-    if (currentLocation.startsWith('/tasks')) {
+    if (currentLocation.startsWith('/projects')) {
       return 1;
     }
-    if (currentLocation.startsWith('/exports')) {
+    if (currentLocation.startsWith('/tasks')) {
       return 2;
     }
-    if (currentLocation.startsWith('/settings')) {
+    if (currentLocation.startsWith('/exports')) {
       return 3;
+    }
+    if (currentLocation.startsWith('/settings')) {
+      return 4;
     }
     return 0;
   }
@@ -33,6 +36,10 @@ class AppShell extends StatelessWidget {
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
             label: 'Overview',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.folder_open_outlined),
+            label: 'Projects',
           ),
           NavigationDestination(
             icon: Icon(Icons.task_alt_outlined),
@@ -53,12 +60,15 @@ class AppShell extends StatelessWidget {
               context.go('/');
               return;
             case 1:
-              context.go('/tasks');
+              context.go('/projects');
               return;
             case 2:
-              context.go('/exports');
+              context.go('/tasks');
               return;
             case 3:
+              context.go('/exports');
+              return;
+            case 4:
               context.go('/settings');
               return;
           }

@@ -105,6 +105,34 @@ class FluxaApiClient {
     }
   }
 
+  Future<FluxaProject> createProject(
+    String accessToken,
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/v1/projects',
+        data: payload,
+        options: _authorized(accessToken),
+      );
+
+      return FluxaProject.fromJson(response.data ?? const {});
+    } catch (error) {
+      throw _toException(error);
+    }
+  }
+
+  Future<void> deleteProject(String accessToken, String projectId) async {
+    try {
+      await _dio.delete<void>(
+        '/v1/projects/$projectId',
+        options: _authorized(accessToken),
+      );
+    } catch (error) {
+      throw _toException(error);
+    }
+  }
+
   Future<void> deleteTask(String accessToken, String taskId) async {
     try {
       await _dio.delete<void>(
@@ -168,6 +196,35 @@ class FluxaApiClient {
     }
   }
 
+  Future<FluxaProject> getProject(String accessToken, String projectId) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/v1/projects/$projectId',
+        options: _authorized(accessToken),
+      );
+
+      return FluxaProject.fromJson(response.data ?? const {});
+    } catch (error) {
+      throw _toException(error);
+    }
+  }
+
+  Future<FluxaProjectSummary> getProjectSummary(
+    String accessToken,
+    String projectId,
+  ) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/v1/projects/$projectId/summary',
+        options: _authorized(accessToken),
+      );
+
+      return FluxaProjectSummary.fromJson(response.data ?? const {});
+    } catch (error) {
+      throw _toException(error);
+    }
+  }
+
   Future<FluxaTask> getTask(String accessToken, String taskId) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
@@ -222,6 +279,41 @@ class FluxaApiClient {
     }
   }
 
+  Future<List<FluxaProject>> listProjects(String accessToken) async {
+    try {
+      final response = await _dio.get<List<dynamic>>(
+        '/v1/projects',
+        options: _authorized(accessToken),
+      );
+
+      return (response.data ?? const [])
+          .map(
+            (entry) => FluxaProject.fromJson(
+              Map<String, dynamic>.from(entry as Map),
+            ),
+          )
+          .toList();
+    } catch (error) {
+      throw _toException(error);
+    }
+  }
+
+  Future<FluxaTaskPage> listProjectTasks(
+    String accessToken,
+    String projectId,
+  ) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/v1/projects/$projectId/tasks',
+        options: _authorized(accessToken),
+      );
+
+      return FluxaTaskPage.fromJson(response.data ?? const {});
+    } catch (error) {
+      throw _toException(error);
+    }
+  }
+
   Future<FluxaTaskAuditPage> listTaskAudit(
     String accessToken,
     String taskId,
@@ -260,6 +352,7 @@ class FluxaApiClient {
       final meFuture = getMe(accessToken);
       final tenantsFuture = getTenants(accessToken);
       final summaryFuture = getDashboardSummary(accessToken);
+      final projectsFuture = listProjects(accessToken);
       final tasksFuture = listTasks(
         accessToken,
         query: const {
@@ -269,6 +362,7 @@ class FluxaApiClient {
 
       final me = await meFuture;
       final members = await listTenantMembers(accessToken, me.activeTenant.tenantId);
+      final projects = await projectsFuture;
       final tenants = await tenantsFuture;
       final summary = await summaryFuture;
       final tasks = await tasksFuture;
@@ -276,6 +370,7 @@ class FluxaApiClient {
       return OverviewSnapshot(
         me: me,
         members: members,
+        projects: projects,
         summary: summary,
         tasks: tasks,
         tenants: tenants,
@@ -293,11 +388,32 @@ class FluxaApiClient {
       final task = await getTask(accessToken, taskId);
       final auditFuture = listTaskAudit(accessToken, taskId);
       final membersFuture = listTenantMembers(accessToken, task.tenantId);
+      final projectsFuture = listProjects(accessToken);
 
       return TaskDetailSnapshot(
         audit: await auditFuture,
         members: await membersFuture,
+        projects: await projectsFuture,
         task: task,
+      );
+    } catch (error) {
+      throw _toException(error);
+    }
+  }
+
+  Future<ProjectDetailSnapshot> loadProjectDetail(
+    String accessToken,
+    String projectId,
+  ) async {
+    try {
+      final projectFuture = getProject(accessToken, projectId);
+      final summaryFuture = getProjectSummary(accessToken, projectId);
+      final tasksFuture = listProjectTasks(accessToken, projectId);
+
+      return ProjectDetailSnapshot(
+        project: await projectFuture,
+        summary: await summaryFuture,
+        tasks: await tasksFuture,
       );
     } catch (error) {
       throw _toException(error);
@@ -410,6 +526,24 @@ class FluxaApiClient {
       );
 
       return FluxaTask.fromJson(response.data ?? const {});
+    } catch (error) {
+      throw _toException(error);
+    }
+  }
+
+  Future<FluxaProject> updateProject(
+    String accessToken,
+    String projectId,
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final response = await _dio.patch<Map<String, dynamic>>(
+        '/v1/projects/$projectId',
+        data: payload,
+        options: _authorized(accessToken),
+      );
+
+      return FluxaProject.fromJson(response.data ?? const {});
     } catch (error) {
       throw _toException(error);
     }

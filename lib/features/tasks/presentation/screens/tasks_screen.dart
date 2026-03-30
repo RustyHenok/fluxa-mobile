@@ -6,7 +6,9 @@ import 'package:intl/intl.dart';
 import '../../../../core/models/fluxa_models.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 
-final taskListProvider = FutureProvider<FluxaTaskPage>((ref) async {
+final taskProjectFilterProvider = StateProvider<String?>((ref) => null);
+
+final taskListProvider = FutureProvider<TaskListSnapshot>((ref) async {
   final auth = ref.watch(authControllerProvider).state;
   final session = auth.session;
   if (session == null) {
@@ -14,13 +16,31 @@ final taskListProvider = FutureProvider<FluxaTaskPage>((ref) async {
   }
 
   final api = ref.watch(fluxaApiClientProvider);
-  return api.listTasks(
+  final projectId = ref.watch(taskProjectFilterProvider);
+  final tasksFuture = api.listTasks(
     session.accessToken,
-    query: const {
+    query: {
       'limit': 12,
+      if (projectId != null && projectId.isNotEmpty) 'project_id': projectId,
     },
   );
+  final projectsFuture = api.listProjects(session.accessToken);
+
+  return TaskListSnapshot(
+    projects: await projectsFuture,
+    tasks: await tasksFuture,
+  );
 });
+
+class TaskListSnapshot {
+  const TaskListSnapshot({
+    required this.projects,
+    required this.tasks,
+  });
+
+  final List<FluxaProject> projects;
+  final FluxaTaskPage tasks;
+}
 
 class TasksScreen extends ConsumerWidget {
   const TasksScreen({super.key});
@@ -36,6 +56,7 @@ class TasksScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final taskListAsync = ref.watch(taskListProvider);
+    final selectedProjectId = ref.watch(taskProjectFilterProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -53,7 +74,34 @@ class TasksScreen extends ConsumerWidget {
         label: const Text('New task'),
       ),
       body: taskListAsync.when(
-        data: (taskPage) {
+        data: (snapshot) {
+          final taskPage = snapshot.tasks;
+          final projects = snapshot.projects;
+          final hasSelectedProject = selectedProjectId != null &&
+              projects.any((project) => project.id == selectedProjectId);
+          final effectiveSelectedProjectId =
+              hasSelectedProject ? selectedProjectId : null;
+
+          if (selectedProjectId != null && !hasSelectedProject) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              ref.read(taskProjectFilterProvider.notifier).state = null;
+            });
+          }
+
+          String? projectNameFor(String? projectId) {
+            if (projectId == null || projectId.isEmpty) {
+              return null;
+            }
+
+            for (final project in projects) {
+              if (project.id == projectId) {
+                return project.name;
+              }
+            }
+
+            return null;
+          }
+
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(taskListProvider);
@@ -77,6 +125,30 @@ class TasksScreen extends ConsumerWidget {
                         Text(
                           'Create, review, and edit tasks from the same mobile flow.',
                           style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String?>(
+                          value: effectiveSelectedProjectId,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            labelText: 'Project filter',
+                          ),
+                          items: [
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('All projects'),
+                            ),
+                            ...projects.map(
+                              (project) => DropdownMenuItem<String?>(
+                                value: project.id,
+                                child: Text(project.name),
+                              ),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            ref.read(taskProjectFilterProvider.notifier).state =
+                                value;
+                          },
                         ),
                       ],
                     ),
@@ -111,12 +183,13 @@ class TasksScreen extends ConsumerWidget {
                 }
 
                 final task = taskPage.data[index - 1];
+                final projectName = projectNameFor(task.projectId);
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
                     title: Text(task.title),
                     subtitle: Text(
-                      '${task.status} · ${task.priority} · ${_formatDate(task.dueAt)}',
+                      '${projectName ?? 'No project'} · ${task.status} · ${task.priority} · ${_formatDate(task.dueAt)}',
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/tasks/${task.id}'),
