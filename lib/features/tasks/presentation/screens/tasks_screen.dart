@@ -19,10 +19,10 @@ final taskListProvider = FutureProvider<TaskListSnapshot>((ref) async {
   final projectId = ref.watch(taskProjectFilterProvider);
   final tasksFuture = api.listTasks(
     session.accessToken,
-    query: {
-      'limit': 12,
-      if (projectId != null && projectId.isNotEmpty) 'project_id': projectId,
-    },
+    query: FluxaTaskListQuery(
+      limit: 12,
+      projectId: projectId,
+    ),
   );
   final projectsFuture = api.listProjects(session.accessToken);
 

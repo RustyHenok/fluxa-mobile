@@ -332,13 +332,13 @@ class FluxaApiClient {
 
   Future<FluxaTaskPage> listTasks(
     String accessToken, {
-    Map<String, dynamic>? query,
+    FluxaTaskListQuery? query,
   }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '/v1/tasks',
         options: _authorized(accessToken),
-        queryParameters: query,
+        queryParameters: query?.toQueryParameters(),
       );
 
       return FluxaTaskPage.fromJson(response.data ?? const {});
@@ -355,9 +355,7 @@ class FluxaApiClient {
       final projectsFuture = listProjects(accessToken);
       final tasksFuture = listTasks(
         accessToken,
-        query: const {
-          'limit': 6,
-        },
+        query: const FluxaTaskListQuery(limit: 6),
       );
 
       final me = await meFuture;
@@ -496,12 +494,12 @@ class FluxaApiClient {
   Future<FluxaTask> updateTask(
     String accessToken,
     String taskId,
-    Map<String, dynamic> payload,
+    FluxaTaskPatchRequest payload,
   ) async {
     try {
       final response = await _dio.patch<Map<String, dynamic>>(
         '/v1/tasks/$taskId',
-        data: payload,
+        data: payload.toJson(),
         options: _authorized(accessToken),
       );
 

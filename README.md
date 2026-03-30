@@ -42,6 +42,7 @@ The mobile repo now includes:
 - secure refresh-token persistence
 - Dio-backed API client aligned with the backend REST contract
 - generated Dart request and response contract models derived from the synced backend OpenAPI file
+- typed task query helpers and partial-update request wrappers for the mobile client
 - signed-in overview dashboard
 - project list, detail, create, edit, and delete flows
 - task list + task detail with audit timeline
@@ -66,5 +67,4 @@ flutter run --dart-define=FLUXA_API_BASE_URL=http://10.0.2.2:18080
 
 After the Flutter SDK is available locally, the next mobile slices are:
 
-- contract-drive the remaining partial-update paths and query helpers
 - device verification and UX polish

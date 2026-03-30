@@ -128,7 +128,11 @@ class TaskDetailScreen extends ConsumerWidget {
                                 await ref.read(fluxaApiClientProvider).updateTask(
                                       session.accessToken,
                                       task.id,
-                                      const {'status': 'archived'},
+                                      const FluxaTaskPatchRequest(
+                                        status: FluxaPatchField<String>.set(
+                                          'archived',
+                                        ),
+                                      ),
                                     );
                                 ref.invalidate(taskDetailProvider(taskId));
                                 ref.invalidate(taskListProvider);

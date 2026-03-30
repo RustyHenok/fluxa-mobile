@@ -570,6 +570,98 @@ class FluxaTaskAuditEntry {
   }
 }
 
+class FluxaTaskFilters {
+  const FluxaTaskFilters({
+    required this.assigneeId,
+    required this.dueAfter,
+    required this.dueBefore,
+    required this.priority,
+    required this.projectId,
+    required this.q,
+    required this.status,
+    required this.updatedAfter,
+  });
+
+  final String? assigneeId;
+  final String? dueAfter;
+  final String? dueBefore;
+  final String? priority;
+  final String? projectId;
+  final String? q;
+  final String? status;
+  final String? updatedAfter;
+
+  factory FluxaTaskFilters.fromJson(Map<String, dynamic> json) {
+    return FluxaTaskFilters(
+      assigneeId: json['assignee_id'] as String?,
+      dueAfter: json['due_after'] as String?,
+      dueBefore: json['due_before'] as String?,
+      priority: json['priority'] as String?,
+      projectId: json['project_id'] as String?,
+      q: json['q'] as String?,
+      status: json['status'] as String?,
+      updatedAfter: json['updated_after'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'assignee_id': assigneeId,
+      'due_after': dueAfter,
+      'due_before': dueBefore,
+      'priority': priority,
+      'project_id': projectId,
+      'q': q,
+      'status': status,
+      'updated_after': updatedAfter,
+    };
+  }
+}
+
+class FluxaTaskPatchPayload {
+  const FluxaTaskPatchPayload({
+    required this.assigneeId,
+    required this.description,
+    required this.dueAt,
+    required this.priority,
+    required this.projectId,
+    required this.status,
+    required this.title,
+  });
+
+  final String? assigneeId;
+  final String? description;
+  final String? dueAt;
+  final String? priority;
+  final String? projectId;
+  final String? status;
+  final String? title;
+
+  factory FluxaTaskPatchPayload.fromJson(Map<String, dynamic> json) {
+    return FluxaTaskPatchPayload(
+      assigneeId: json['assignee_id'] as String?,
+      description: json['description'] as String?,
+      dueAt: json['due_at'] as String?,
+      priority: json['priority'] as String?,
+      projectId: json['project_id'] as String?,
+      status: json['status'] as String?,
+      title: json['title'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'assignee_id': assigneeId,
+      'description': description,
+      'due_at': dueAt,
+      'priority': priority,
+      'project_id': projectId,
+      'status': status,
+      'title': title,
+    };
+  }
+}
+
 class FluxaTaskPayload {
   const FluxaTaskPayload({
     required this.assigneeId,

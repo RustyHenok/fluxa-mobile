@@ -223,7 +223,7 @@ class _TaskFormBodyState extends ConsumerState<_TaskFormBody> {
           ? await api.updateTask(
               session.accessToken,
               widget.snapshot.task!.id,
-              taskPayload.toJson(),
+              FluxaTaskPatchRequest.fromTaskPayload(taskPayload),
             )
           : await api.createTask(
               session.accessToken,
