@@ -126,7 +126,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final taskListAsync = ref.watch(taskListProvider);
     final selectedProjectId = ref.watch(taskProjectFilterProvider);
     final selectedStatus = ref.watch(taskStatusFilterProvider);
@@ -244,7 +244,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<String?>(
-                        value: effectiveSelectedProjectId,
+                        key: ValueKey(
+                          'task-project-filter-${effectiveSelectedProjectId ?? 'all'}',
+                        ),
+                        initialValue: effectiveSelectedProjectId,
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
                           labelText: 'Project filter',
@@ -270,7 +273,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                         children: [
                           Expanded(
                             child: DropdownButtonFormField<String?>(
-                              value: selectedStatus,
+                              key: ValueKey(
+                                'task-status-filter-${selectedStatus ?? 'all'}',
+                              ),
+                              initialValue: selectedStatus,
                               decoration: const InputDecoration(
                                 border: OutlineInputBorder(),
                                 labelText: 'Status',
@@ -296,7 +302,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: DropdownButtonFormField<String?>(
-                              value: selectedPriority,
+                              key: ValueKey(
+                                'task-priority-filter-${selectedPriority ?? 'all'}',
+                              ),
+                              initialValue: selectedPriority,
                               decoration: const InputDecoration(
                                 border: OutlineInputBorder(),
                                 labelText: 'Priority',

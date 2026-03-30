@@ -78,6 +78,7 @@ class TaskDetailScreen extends ConsumerWidget {
               break;
             }
           }
+          final linkedProject = project;
 
           return ListView(
             padding: const EdgeInsets.all(20),
@@ -107,10 +108,11 @@ class TaskDetailScreen extends ConsumerWidget {
                               assignee?.email ?? 'Unassigned',
                             ),
                           ),
-                          if (project != null)
+                          if (linkedProject != null)
                             ActionChip(
-                              label: Text(project.name),
-                              onPressed: () => context.push('/projects/${project.id}'),
+                              label: Text(linkedProject.name),
+                              onPressed: () =>
+                                  context.push('/projects/${linkedProject.id}'),
                             ),
                         ],
                       ),
@@ -159,10 +161,11 @@ class TaskDetailScreen extends ConsumerWidget {
                               : 'Archive task',
                         ),
                       ),
-                      if (project != null) ...[
+                      if (linkedProject != null) ...[
                         const SizedBox(height: 12),
                         OutlinedButton.icon(
-                          onPressed: () => context.push('/projects/${project.id}'),
+                          onPressed: () =>
+                              context.push('/projects/${linkedProject.id}'),
                           icon: const Icon(Icons.folder_open_outlined),
                           label: const Text('Open project'),
                         ),
