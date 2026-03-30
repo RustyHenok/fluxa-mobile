@@ -14,3 +14,5 @@ fi
 mkdir -p "$TARGET_DIR"
 cp "$SOURCE_PATH" "$TARGET_PATH"
 printf 'Synced OpenAPI contract to %s\n' "$TARGET_PATH"
+
+node "$ROOT_DIR/scripts/generate_openapi_models.mjs"

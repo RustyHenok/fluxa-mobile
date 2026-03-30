@@ -15,6 +15,9 @@ Sync the checked-in backend contract into this repo with:
 ./scripts/sync_openapi.sh
 ```
 
+That script now also regenerates the Dart contract models in
+`lib/core/models/generated/fluxa_contract_models.dart`.
+
 If your backend checkout lives somewhere else, override the source path:
 
 ```bash
@@ -38,6 +41,7 @@ The mobile repo now includes:
 - auth bootstrap, login, register, logout, and tenant switching
 - secure refresh-token persistence
 - Dio-backed API client aligned with the backend REST contract
+- generated Dart contract models derived from the synced backend OpenAPI file
 - signed-in overview dashboard
 - project list, detail, create, edit, and delete flows
 - task list + task detail with audit timeline
@@ -62,6 +66,6 @@ flutter run --dart-define=FLUXA_API_BASE_URL=http://10.0.2.2:18080
 
 After the Flutter SDK is available locally, the next mobile slices are:
 
-- generated Dart client/models from the synced OpenAPI file
+- generated request models and a more fully contract-driven API client
 - export filters that include project scope
 - device verification and UX polish
